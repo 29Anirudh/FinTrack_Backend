@@ -1,0 +1,8 @@
+.env
+target/
+.git/
+.vscode/
+.settings/
+.classpath
+.project
+bin/
