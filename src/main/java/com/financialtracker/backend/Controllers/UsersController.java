@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.financialtracker.backend.DTO.UserDTO;
@@ -26,6 +27,8 @@ import com.financialtracker.backend.Models.BL.UsersBL;
 import com.financialtracker.backend.Models.DL.ServicesImpl.JWTService;
 import com.financialtracker.backend.Models.POJO.Users;
 import com.financialtracker.backend.Models.Repositories.UsersRepository;
+
+import com.financialtracker.backend.DTO.User.SetUsernameRequest;
 
 @RestController
 @RequestMapping("/user")
@@ -42,7 +45,7 @@ public class UsersController {
 	JWTService jwtservice;
 	Map<String, Object> resp=new HashMap<String, Object>();
 	
-	public String getUsername(){
+	public String getEmail(){
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 	
@@ -63,7 +66,7 @@ public class UsersController {
 	@GetMapping("/getuser")
 	public ResponseEntity<?> getUserByToken(){
 		resp.clear();
-		resp.put("data", usersbl.getUserByToken(getUsername()));
+		resp.put("data", usersbl.getUserByToken(getEmail()));
 		return ResponseEntity.ok(resp);
 	}
 	
@@ -105,4 +108,17 @@ public class UsersController {
 			return new ResponseEntity<>(resp,HttpStatus.BAD_REQUEST);
 		}
 	}
+
+	@GetMapping("/search")
+	public ResponseEntity<?> searchForUsername(@RequestParam("username") String username){
+		resp.clear();
+		resp.put("msg", usersbl.searchForNewUsername(username));
+		return new ResponseEntity<>(resp,HttpStatus.OK);
+	}
+
+	@PostMapping("/setusername")
+	public ResponseEntity<?> setUsername(@RequestBody SetUsernameRequest usernameRequest){
+		resp.put("msg", usersbl.setUsername(usernameRequest.username(),getEmail()));
+		return new ResponseEntity<>(resp,HttpStatus.OK);
+	}	
 }

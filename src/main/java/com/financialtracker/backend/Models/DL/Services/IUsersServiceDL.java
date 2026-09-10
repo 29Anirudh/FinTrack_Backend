@@ -12,4 +12,8 @@ public interface IUsersServiceDL {
 	Boolean validateUser(UserDTO U);
 	String createUser(UserDTO U);
 	UserReturnDTO getUserByToken(String username);
+
+	String searchForNewUsername(String searchValue);
+	String setUsername(String newUsername,String email);
+
 }

@@ -19,13 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.financialtracker.backend.DTO.DashBoardDTO;
 import com.financialtracker.backend.DTO.MonthlyOverviewDTO;
-import com.financialtracker.backend.DTO.OverviewDTO;
 import com.financialtracker.backend.DTO.TotalOverviewOfUser;
 import com.financialtracker.backend.DTO.TransactionDetails;
 import com.financialtracker.backend.DTO.TransactionInputDTO;
 import com.financialtracker.backend.DTO.TransactionQueryDTO;
 import com.financialtracker.backend.DTO.TransactionReturnDTO;
 import com.financialtracker.backend.DTO.UserAnalyticsDTO;
+import com.financialtracker.backend.DTO.DashboardDetails.OverviewDTO;
 import com.financialtracker.backend.Exceptions.UserDefinedException;
 import com.financialtracker.backend.Models.DL.Services.ITransactionService;
 import com.financialtracker.backend.Models.POJO.Account;

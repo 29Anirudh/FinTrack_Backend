@@ -22,6 +22,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.financialtracker.backend.Filter.JWTAuthenticationFilter;
 import com.financialtracker.backend.Models.BL.AccountBL;
+import com.financialtracker.backend.Models.BL.FriendshipBL;
+import com.financialtracker.backend.Models.BL.ProfileBL;
 import com.financialtracker.backend.Models.BL.TransactionBL;
 import com.financialtracker.backend.Models.BL.UsersBL;
 import com.financialtracker.backend.Models.DL.ServicesImpl.JWTService;
@@ -45,6 +47,14 @@ public class AppConfig {
 	@Bean
 	public TransactionBL transactionBL(){
 		return new TransactionBL();
+	}
+	@Bean
+	public ProfileBL profileBL(){
+		return new ProfileBL();
+	}
+	@Bean 
+	public FriendshipBL friendshipBL(){
+		return new FriendshipBL();
 	}
 	@Bean
 	public AuthenticationEntryPointHandler authenticationEntryPointHandler() {
@@ -88,8 +98,7 @@ public class AppConfig {
 	    config.setAllowedHeaders(List.of("*"));
 	    config.setAllowCredentials(true);
 
-	    UrlBasedCorsConfigurationSource source =
-	            new UrlBasedCorsConfigurationSource();
+	    UrlBasedCorsConfigurationSource source =new UrlBasedCorsConfigurationSource();
 
 	    source.registerCorsConfiguration("/**", config);
 

@@ -19,4 +19,5 @@ public interface ITransactionService {
 	DashBoardDTO getDashboardDetails(String username);
 	TotalOverviewOfUser getDebitAndCreditOverview(String username);
 	List<TransactionReturnDTO> getTopTransactions(String accountid,String username);
+	
 }

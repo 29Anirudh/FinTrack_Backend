@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.financialtracker.backend.DTO.UserDTO;
 import com.financialtracker.backend.DTO.UserReturnDTO;
@@ -13,6 +15,7 @@ import com.financialtracker.backend.Exceptions.UserDefinedException;
 import com.financialtracker.backend.Models.DL.Services.IUsersServiceDL;
 import com.financialtracker.backend.Models.POJO.Users;
 import com.financialtracker.backend.Models.Repositories.UsersRepository;
+
 
 @Service
 public class UsersSeviceDL implements IUsersServiceDL {
@@ -78,5 +81,35 @@ public class UsersSeviceDL implements IUsersServiceDL {
 		Users U=usersrepository.findByEmail(username).orElseThrow(()->new UserDefinedException("No user exists with email: "+username));
 		return new UserReturnDTO(U.getUserid(),U.getAccounts().stream().map(t->t.getAccountno()).toList(),U.getName(),U.getEmail(),U.getDateofbirth(),U.getStatus(),U.getCreatedAt());
 	}
+
+	@Override
+	public String searchForNewUsername(String searchValue) {
+		if(searchValue.length()<6){
+			throw new UserDefinedException("Length should be atleast 6.");
+		}
+		else if(usersrepository.existsByUsernameIgnoreCase(searchValue.toLowerCase())){
+			throw new UserDefinedException("\'"+searchValue+"\' already exists");
+		}
+		else{
+			return "\'"+searchValue+"\' is available";
+		}
+	}
+
+	@Transactional 
+	@Override
+	public String setUsername(String newUsername, String email) {
+		Users user=usersrepository.findByEmail(email).orElseThrow(()-> new UserDefinedException("No user exists with the "+email));
+		if(!searchForNewUsername(newUsername).contains("available")){
+			throw new UserDefinedException("\'"+newUsername+"\' already exists.Please choose other username.");
+		}
+		else{
+			user.setUsername(newUsername);
+			return "Username set successfully.";
+		}
+	}
+
+	
+
+	
 
 }

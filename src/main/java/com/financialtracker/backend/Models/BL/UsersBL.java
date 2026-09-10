@@ -32,4 +32,12 @@ public class UsersBL {
 	public UserReturnDTO getUserByToken(String username) {
 		return usersdl.getUserByToken(username);
 	}
+
+	public String searchForNewUsername(String newUsername){
+		return usersdl.searchForNewUsername(newUsername);
+	}
+
+	public String setUsername(String newUsername,String email){
+		return usersdl.setUsername(newUsername, email);
+	}
 }

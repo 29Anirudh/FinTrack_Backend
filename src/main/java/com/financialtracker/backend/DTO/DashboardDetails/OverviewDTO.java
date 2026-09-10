@@ -1,4 +1,4 @@
-package com.financialtracker.backend.DTO;
+package com.financialtracker.backend.DTO.DashboardDetails;
 
 import java.math.BigDecimal;
 
