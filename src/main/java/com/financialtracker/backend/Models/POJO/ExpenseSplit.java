@@ -29,13 +29,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@AllArgsConstructor 
-@NoArgsConstructor 
-@Data 
-
-@Entity 
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
+@Entity
 public class ExpenseSplit {
-    @Id 
+
+    @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
@@ -44,8 +44,12 @@ public class ExpenseSplit {
 
     private Integer countOfMembers;
 
-    @OneToMany(mappedBy = "each_user_expense",cascade = CascadeType.ALL,orphanRemoval = true)
-    List<EachUserPayment> eachUserPayments=new ArrayList<>();
+    @OneToMany(
+        mappedBy = "expenseSplit",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private List<EachUserPayment> eachUserPayments = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     private SplitMode splitMode;
@@ -58,18 +62,17 @@ public class ExpenseSplit {
     private SplitStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn (name = "owner_id")
+    @JoinColumn(name = "owner_id")
     private Users owner;
 
-    @ManyToOne(fetch=FetchType.LAZY)
-    @JoinColumn (name = "created_by_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id")
     private Users createdBy;
 
-    @CreationTimestamp 
-    @Column (nullable = false,updatable = false)
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    
-    @UpdateTimestamp 
-    private LocalDateTime updatedAt;
 
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }
