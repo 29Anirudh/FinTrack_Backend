@@ -12,5 +12,6 @@ import com.financialtracker.backend.Models.POJO.Users;
 public interface UsersRepository extends JpaRepository<Users, Integer> {
 	public Optional<Users> findByEmail(String email);
 	Boolean existsByUsernameIgnoreCase(String username);
+	Optional<Users> findByUsernameIgnoreCase(String username);
 	List<Users> findByUsernameContainsIgnoreCaseOrNameContainingIgnoreCase(String username,String name);
 }

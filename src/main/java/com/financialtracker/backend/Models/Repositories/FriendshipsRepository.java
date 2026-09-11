@@ -12,6 +12,7 @@ import com.financialtracker.backend.Models.POJO.Users;
 @Repository 
 public interface FriendshipsRepository extends JpaRepository<Friendships,Long> {
     Boolean existsByUser1AndUser2(Users user1,Users user2);
+    boolean existsByUser1UsernameIgnoreCaseAndUser2UsernameIgnoreCase(String username1,String username2);
     Optional<Friendships> findByUser1AndUser2(Users user1,Users user2);
     List<Friendships> findByUser1OrUser2(Users user1,Users user2);
     

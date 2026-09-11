@@ -16,5 +16,7 @@ public interface IFriendShipsDL {
 
     List<FriendRequestReceived> getReceivedRequests(String username);
     List<FriendRequestSent> getSentRequests(String username);
+
+    
     
 }
