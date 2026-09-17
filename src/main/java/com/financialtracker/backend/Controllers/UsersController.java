@@ -27,7 +27,7 @@ import com.financialtracker.backend.Models.BL.UsersBL;
 import com.financialtracker.backend.Models.DL.ServicesImpl.JWTService;
 import com.financialtracker.backend.Models.POJO.Users;
 import com.financialtracker.backend.Models.Repositories.UsersRepository;
-
+import com.financialtracker.backend.DTO.User.SearchUsers;
 import com.financialtracker.backend.DTO.User.SetUsernameRequest;
 
 @RestController
@@ -121,4 +121,10 @@ public class UsersController {
 		resp.put("msg", usersbl.setUsername(usernameRequest.username(),getEmail()));
 		return new ResponseEntity<>(resp,HttpStatus.OK);
 	}	
+
+	@GetMapping ("/searchusers")
+	public ResponseEntity<?> getUsersListOnSearch(@RequestBody SearchUsers search ){
+		resp.put("list", usersbl.getUsersList(search.searchValue(), getEmail()));
+		return new ResponseEntity<>(resp,HttpStatus.OK);
+	}
 }

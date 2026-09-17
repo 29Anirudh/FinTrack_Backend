@@ -1,5 +1,6 @@
 package com.financialtracker.backend.Models.DL.ServicesImpl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,10 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.financialtracker.backend.DTO.UserDTO;
 import com.financialtracker.backend.DTO.UserReturnDTO;
+import com.financialtracker.backend.DTO.User.UsersDetailsForRequests;
 import com.financialtracker.backend.Exceptions.UserDefinedException;
 import com.financialtracker.backend.Models.DL.Services.IUsersServiceDL;
+import com.financialtracker.backend.Models.POJO.FriendRequests;
+import com.financialtracker.backend.Models.POJO.Friendships;
 import com.financialtracker.backend.Models.POJO.Users;
+import com.financialtracker.backend.Models.Repositories.FriendRequestsRepository;
 import com.financialtracker.backend.Models.Repositories.UsersRepository;
+import com.financialtracker.backend.enums.FriendshipStatus;
 
 
 @Service
@@ -23,6 +29,8 @@ public class UsersSeviceDL implements IUsersServiceDL {
 	UsersRepository usersrepository;
 	@Autowired
 	PasswordEncoder passwordencoder;
+	@Autowired 
+	FriendRequestsRepository friendRequestsRepository;
 	@Override
 	public List<UserReturnDTO> getAllusers() {
 		List<Users> users= usersrepository.findAll();
@@ -108,8 +116,30 @@ public class UsersSeviceDL implements IUsersServiceDL {
 		}
 	}
 
-	
+	@Transactional
+	@Override
+	public List<UsersDetailsForRequests> getSearchResultsOfUsers(String searchKey, String username) {
+		List<Users> usersList=usersrepository.findByUsernameContainsIgnoreCaseOrNameContainingIgnoreCase(searchKey,searchKey);
+		Users me=usersrepository.findByEmail(username).orElseThrow(()->new UserDefinedException("No user exists with email: "+username));
+		usersList.remove(me);
+		usersList.removeIf(user->user.getUsername()==null || user.getUsername().length()==0);
 
+		List<UsersDetailsForRequests> userDetails=new ArrayList<>();
+		for (Users user : usersList) {
+			if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(me.getUsername(), user.getUsername(),FriendshipStatus.ACCEPTED) || friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(user.getUsername(), me.getUsername(), FriendshipStatus.ACCEPTED)){
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(),user.getName(), user.getUsername(), "ACCEPTED"));
+			}
+			else if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(me.getUsername(), user.getUsername(),FriendshipStatus.PENDING)){
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(), user.getUsername(), "SENT"));
+			}
+			else if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(user.getUsername(),me.getUsername(),FriendshipStatus.PENDING)){
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(), user.getUsername(), "REQUESTED"));
+			}
+			else{
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(), user.getUsername(), ""));
+			}
+		}
+		return userDetails;
+	}
 	
-
 }

@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.financialtracker.backend.DTO.UserDTO;
 import com.financialtracker.backend.DTO.UserReturnDTO;
+import com.financialtracker.backend.DTO.User.UsersDetailsForRequests;
 
 public interface IUsersServiceDL {
 	List<UserReturnDTO> getAllusers();
@@ -15,5 +16,7 @@ public interface IUsersServiceDL {
 
 	String searchForNewUsername(String searchValue);
 	String setUsername(String newUsername,String email);
+
+	List<UsersDetailsForRequests> getSearchResultsOfUsers(String searchKey,String username);
 
 }

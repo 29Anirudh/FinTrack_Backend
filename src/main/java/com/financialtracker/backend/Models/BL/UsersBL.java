@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.financialtracker.backend.DTO.UserDTO;
 import com.financialtracker.backend.DTO.UserReturnDTO;
+import com.financialtracker.backend.DTO.User.UsersDetailsForRequests;
 import com.financialtracker.backend.Models.DL.ServicesImpl.UsersSeviceDL;
 
 public class UsersBL {
@@ -39,5 +40,9 @@ public class UsersBL {
 
 	public String setUsername(String newUsername,String email){
 		return usersdl.setUsername(newUsername, email);
+	}
+
+	public List<UsersDetailsForRequests> getUsersList(String searchValue,String username){
+		return  usersdl.getSearchResultsOfUsers(searchValue, username);
 	}
 }

@@ -113,7 +113,6 @@ public class FriendshipsDL implements IFriendShipsDL{
 	public String cancelRequest(FriendRequest request, String sendersUsername) {
 		Users sender=usersRepository.findByEmail(sendersUsername).orElseThrow(()->new UserDefinedException("No user found with email: "+sendersUsername));
         Users receiver=usersRepository.findByEmail(request.receiversemail()).orElseThrow(()->new UserDefinedException("No user found with email: "+request.receiversemail()));
-
         boolean alreadyFriends=friendshipsRepository.existsByUser1AndUser2(sender, receiver)||friendshipsRepository.existsByUser1AndUser2(receiver, sender);
         if(alreadyFriends){
             throw new UserDefinedException("You are already a friend of "+receiver.getName()+".You can delete your friend.");
@@ -156,7 +155,7 @@ public class FriendshipsDL implements IFriendShipsDL{
         Friendships friendship=friendshipsRepository.findByUser1AndUser2(sender, receiver)
                 .or(()->friendshipsRepository.findByUser1AndUser2(receiver, sender))
                 .orElseThrow(()->new UserDefinedException("You and "+receiver.getName()+" are not friends yet."));
-        FriendRequests friendRequest=friendRequestsRepository.findBySenderAndReceiver(sender, receiver).or(()->friendRequestsRepository.findBySenderAndReceiver(receiver,sender)).orElseThrow(()->new UserDefinedException("No friend request exists between you."));
+        FriendRequests friendRequest=friendRequestsRepository.findBySenderAndReceiver(sender, receiver).or(()->friendRequestsRepository.findBySenderAndReceiver(receiver,sender)).orElseThrow(()->new UserDefinedException("No friend request exists between you and "+receiver.getName()));
         friendRequestsRepository.delete(friendRequest);
         friendshipsRepository.delete(friendship);
         return "Friend deleted successfully";
@@ -165,13 +164,13 @@ public class FriendshipsDL implements IFriendShipsDL{
 	@Override
 	public List<FriendRequestReceived> getReceivedRequests(String username) {
         Users user=usersRepository.findByEmail(username).orElseThrow(()->new UserDefinedException("No user found with email: "+username));
-		return friendRequestsRepository.findByReceiverAndStatus(user,FriendshipStatus.PENDING).stream().map((fr)->new FriendRequestReceived(fr.getSender().getName(), fr.getSender().getUsername())).toList();
+		return friendRequestsRepository.findByReceiverAndStatus(user,FriendshipStatus.PENDING).stream().map((fr)->new FriendRequestReceived(fr.getSender().getName(), fr.getSender().getUsername(),fr.getSender().getEmail())).toList();
 	}
 
 	@Override
 	public List<FriendRequestSent> getSentRequests(String username) {
 		 Users user=usersRepository.findByEmail(username).orElseThrow(()->new UserDefinedException("No user found with email: "+username));
-		return friendRequestsRepository.findBySenderAndStatus(user,FriendshipStatus.PENDING).stream().map((fr)->new FriendRequestSent(fr.getSender().getName(), fr.getSender().getUsername(),fr.getStatus().name())).toList();
+		return friendRequestsRepository.findBySenderAndStatus(user,FriendshipStatus.PENDING).stream().map((fr)->new FriendRequestSent(fr.getReceiver().getName(), fr.getReceiver().getUsername(),fr.getReceiver().getEmail(),fr.getStatus().name())).toList();
 	}
 
     
