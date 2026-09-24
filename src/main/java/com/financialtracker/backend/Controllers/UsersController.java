@@ -122,7 +122,7 @@ public class UsersController {
 		return new ResponseEntity<>(resp,HttpStatus.OK);
 	}	
 
-	@GetMapping ("/searchusers")
+	@PostMapping ("/searchusers")
 	public ResponseEntity<?> getUsersListOnSearch(@RequestBody SearchUsers search ){
 		resp.put("list", usersbl.getUsersList(search.searchValue(), getEmail()));
 		return new ResponseEntity<>(resp,HttpStatus.OK);

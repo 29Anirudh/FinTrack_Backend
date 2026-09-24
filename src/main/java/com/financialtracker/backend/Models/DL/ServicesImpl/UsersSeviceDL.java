@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,8 +14,6 @@ import com.financialtracker.backend.DTO.UserReturnDTO;
 import com.financialtracker.backend.DTO.User.UsersDetailsForRequests;
 import com.financialtracker.backend.Exceptions.UserDefinedException;
 import com.financialtracker.backend.Models.DL.Services.IUsersServiceDL;
-import com.financialtracker.backend.Models.POJO.FriendRequests;
-import com.financialtracker.backend.Models.POJO.Friendships;
 import com.financialtracker.backend.Models.POJO.Users;
 import com.financialtracker.backend.Models.Repositories.FriendRequestsRepository;
 import com.financialtracker.backend.Models.Repositories.UsersRepository;
@@ -126,17 +123,21 @@ public class UsersSeviceDL implements IUsersServiceDL {
 
 		List<UsersDetailsForRequests> userDetails=new ArrayList<>();
 		for (Users user : usersList) {
-			if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(me.getUsername(), user.getUsername(),FriendshipStatus.ACCEPTED) || friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(user.getUsername(), me.getUsername(), FriendshipStatus.ACCEPTED)){
-				userDetails.add(new UsersDetailsForRequests(user.getUserid(),user.getName(), user.getUsername(), "ACCEPTED"));
+			if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCaseAndStatus(me.getUsername(), user.getUsername(),FriendshipStatus.ACCEPTED) || friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCaseAndStatus(user.getUsername(), me.getUsername(), FriendshipStatus.ACCEPTED)){
+				System.out.println(user.getUsername());
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(),user.getName(),user.getEmail(), user.getUsername(), "ACCEPTED"));
 			}
-			else if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(me.getUsername(), user.getUsername(),FriendshipStatus.PENDING)){
-				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(), user.getUsername(), "SENT"));
+			else if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCaseAndStatus(me.getUsername(), user.getUsername(),FriendshipStatus.PENDING)){
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(),user.getEmail(), user.getUsername(), "SENT"));
 			}
-			else if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCase(user.getUsername(),me.getUsername(),FriendshipStatus.PENDING)){
-				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(), user.getUsername(), "REQUESTED"));
+			else if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCaseAndStatus(user.getUsername(),me.getUsername(),FriendshipStatus.PENDING)){
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(),user.getEmail(), user.getUsername(), "REQUESTED"));
+			}
+			else if(friendRequestsRepository.existsBySenderUsernameIgnoreCaseAndReceiverUsernameIgnoreCaseAndStatus(me.getUsername(), user.getUsername(), FriendshipStatus.REJECTED)){
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(),user.getEmail(), user.getUsername(), "REJECTED"));
 			}
 			else{
-				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(), user.getUsername(), ""));
+				userDetails.add(new UsersDetailsForRequests(user.getUserid(), user.getName(), user.getEmail(),user.getUsername(), ""));
 			}
 		}
 		return userDetails;

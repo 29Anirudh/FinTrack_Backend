@@ -76,6 +76,13 @@ public class FriendshipController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping 
+    public ResponseEntity<?> fetchAllFriendsDetails(){
+        Map<String,Object>response=new HashMap<>();
+        response.put("list", friendshipBL.getFriendsDetails(getUsername()));
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
     
 
 }

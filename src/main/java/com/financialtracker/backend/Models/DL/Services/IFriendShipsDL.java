@@ -5,6 +5,7 @@ import java.util.List;
 import com.financialtracker.backend.DTO.Friendship.FriendRequest;
 import com.financialtracker.backend.DTO.Friendship.FriendRequestReceived;
 import com.financialtracker.backend.DTO.Friendship.FriendRequestSent;
+import com.financialtracker.backend.DTO.Friendship.FriendsDetails;
 
 public interface IFriendShipsDL {
     String createRequest(FriendRequest request,String sendersusername);
@@ -17,6 +18,7 @@ public interface IFriendShipsDL {
     List<FriendRequestReceived> getReceivedRequests(String username);
     List<FriendRequestSent> getSentRequests(String username);
 
+    List<FriendsDetails> fetchFriendsDetails(String username);
     
     
 }

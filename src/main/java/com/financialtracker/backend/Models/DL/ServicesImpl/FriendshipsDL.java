@@ -1,7 +1,11 @@
 package com.financialtracker.backend.Models.DL.ServicesImpl;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -10,16 +14,22 @@ import org.springframework.transaction.annotation.Transactional;
 import com.financialtracker.backend.DTO.Friendship.FriendRequest;
 import com.financialtracker.backend.DTO.Friendship.FriendRequestReceived;
 import com.financialtracker.backend.DTO.Friendship.FriendRequestSent;
+import com.financialtracker.backend.DTO.Friendship.FriendsDetails;
 import com.financialtracker.backend.Exceptions.UserDefinedException;
 import com.financialtracker.backend.Models.DL.Services.IFriendShipsDL;
+import com.financialtracker.backend.Models.POJO.EachUserPayment;
+import com.financialtracker.backend.Models.POJO.ExpenseSplit;
 import com.financialtracker.backend.Models.POJO.FriendRequests;
 import com.financialtracker.backend.Models.POJO.Friendships;
 import com.financialtracker.backend.Models.POJO.Users;
 import com.financialtracker.backend.Models.Repositories.AccountRepository;
+import com.financialtracker.backend.Models.Repositories.ExpenseSplitRepository;
 import com.financialtracker.backend.Models.Repositories.FriendRequestsRepository;
 import com.financialtracker.backend.Models.Repositories.FriendshipsRepository;
 import com.financialtracker.backend.Models.Repositories.UsersRepository;
+import com.financialtracker.backend.enums.EachPaymentStatus;
 import com.financialtracker.backend.enums.FriendshipStatus;
+import com.financialtracker.backend.enums.SplitStatus;
 
 @Service 
 public class FriendshipsDL implements IFriendShipsDL{
@@ -32,6 +42,8 @@ public class FriendshipsDL implements IFriendShipsDL{
     AccountRepository accountRepository;
     @Autowired 
     UsersRepository usersRepository;
+    @Autowired 
+    ExpenseSplitRepository expenseSplitRepository;
 
     @Transactional 
 	@Override
@@ -172,6 +184,51 @@ public class FriendshipsDL implements IFriendShipsDL{
 		 Users user=usersRepository.findByEmail(username).orElseThrow(()->new UserDefinedException("No user found with email: "+username));
 		return friendRequestsRepository.findBySenderAndStatus(user,FriendshipStatus.PENDING).stream().map((fr)->new FriendRequestSent(fr.getReceiver().getName(), fr.getReceiver().getUsername(),fr.getReceiver().getEmail(),fr.getStatus().name())).toList();
 	}
+
+    @Override
+    public List<FriendsDetails> fetchFriendsDetails(String email) {
+        Map<String,BigDecimal> eachFriendsSplitMoney=new HashMap<>();
+        List<ExpenseSplit> expenses= expenseSplitRepository.getAllRelatedExpenses(email);
+        for (ExpenseSplit expenseSplit : expenses) {
+            Boolean amOwner=expenseSplit.getOwner().getEmail().equalsIgnoreCase(email);
+            if(expenseSplit.getStatus()==SplitStatus.SETTLED){
+                continue;
+            }
+            if(amOwner){
+                for (EachUserPayment eachUserPayment : expenseSplit.getEachUserPayments()) {
+                    if(eachUserPayment.getUser().getEmail().equalsIgnoreCase(email)){
+                        continue;
+                    }
+                    if(eachUserPayment.getPaymentStatus()==EachPaymentStatus.PAID){
+                        continue;
+                    }
+                    eachFriendsSplitMoney.put(eachUserPayment.getUser().getEmail(), eachUserPayment.getEachShareAmount().add(eachFriendsSplitMoney.getOrDefault(eachUserPayment.getUser().getEmail(), BigDecimal.valueOf(0))));
+                    
+                }
+            }
+            else{
+                for(EachUserPayment eachUserPayment:expenseSplit.getEachUserPayments()){
+                    if(eachUserPayment.getUser().getEmail().equalsIgnoreCase(email)){
+                        continue;
+                    }
+                    if(eachUserPayment.getPaymentStatus()==EachPaymentStatus.PAID){
+                        continue;
+                    }
+                    eachFriendsSplitMoney.put(eachUserPayment.getUser().getEmail(), eachUserPayment.getEachShareAmount().subtract(eachFriendsSplitMoney.getOrDefault(eachUserPayment.getUser().getEmail(), BigDecimal.valueOf(0))));
+                }
+            }
+        }
+        Users me=usersRepository.findByEmail(email).orElseThrow(()->new UserDefinedException("No user exists with email: "+email));
+        List<FriendsDetails> fd=new ArrayList<>();
+        for (Friendships friendship : me.getFriendshipsAccepted()) {
+            Users friend=friendship.getUser1();
+            if(friend.getUsername().isBlank()||friend.getUsername().isEmpty()){
+                continue;
+            }
+            fd.add(new FriendsDetails(friend.getUserid(), friend.getName(), friend.getUsername(), friend.getEmail(), eachFriendsSplitMoney.getOrDefault(friend.getEmail(), BigDecimal.ZERO)));
+        }
+        return fd;
+    }
 
     
 
