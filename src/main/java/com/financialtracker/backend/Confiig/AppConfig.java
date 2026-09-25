@@ -22,6 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.financialtracker.backend.Filter.JWTAuthenticationFilter;
 import com.financialtracker.backend.Models.BL.AccountBL;
+import com.financialtracker.backend.Models.BL.ExpenseSplitBL;
 import com.financialtracker.backend.Models.BL.FriendshipBL;
 import com.financialtracker.backend.Models.BL.ProfileBL;
 import com.financialtracker.backend.Models.BL.TransactionBL;
@@ -55,6 +56,10 @@ public class AppConfig {
 	@Bean 
 	public FriendshipBL friendshipBL(){
 		return new FriendshipBL();
+	}
+	@Bean 
+	public ExpenseSplitBL expenseSplitBL(){
+		return new ExpenseSplitBL();
 	}
 	@Bean
 	public AuthenticationEntryPointHandler authenticationEntryPointHandler() {

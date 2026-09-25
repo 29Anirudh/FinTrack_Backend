@@ -8,5 +8,6 @@ public enum TransactionCategory {
     SHOPPING,
     HEALTHCARE,
     EDUCATION,
+    SPLIT,
     OTHER
 }
