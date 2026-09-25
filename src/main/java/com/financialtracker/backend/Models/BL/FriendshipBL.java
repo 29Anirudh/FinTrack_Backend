@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.financialtracker.backend.DTO.Friendship.FriendRequest;
 import com.financialtracker.backend.DTO.Friendship.FriendRequestReceived;
 import com.financialtracker.backend.DTO.Friendship.FriendRequestSent;
+import com.financialtracker.backend.DTO.Friendship.FriendsDetails;
 import com.financialtracker.backend.Models.DL.ServicesImpl.FriendshipsDL;
 
 public class FriendshipBL {
@@ -36,6 +37,9 @@ public class FriendshipBL {
     }
     public List<FriendRequestSent> getMyFriendRequestSents(String myUsername){
         return friendshipsDL.getSentRequests(myUsername);
+    }
+    public List<FriendsDetails> getFriendsDetails(String email){
+        return friendshipsDL.fetchFriendsDetails(email);
     }
     
 }
