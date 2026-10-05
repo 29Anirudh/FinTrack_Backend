@@ -44,3 +44,6 @@ bin/
 # =========================
 .DS_Store
 Thumbs.db
+
+graphify-out/
+.github

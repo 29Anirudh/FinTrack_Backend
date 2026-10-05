@@ -4,6 +4,6 @@ import java.math.BigDecimal;
 
 import com.financialtracker.backend.enums.EachPaymentStatus;
 
-public record EachUserPaymentResponse(Long id,String name,BigDecimal shareAmount,Boolean isOwner,EachPaymentStatus eachPaymentStatus) {
+public record EachUserPaymentResponse(Long id,String name,String username,BigDecimal shareAmount,Boolean isOwner,EachPaymentStatus eachPaymentStatus) {
     
 }

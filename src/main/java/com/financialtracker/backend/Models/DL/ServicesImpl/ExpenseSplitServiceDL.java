@@ -1,7 +1,9 @@
 package com.financialtracker.backend.Models.DL.ServicesImpl;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -10,20 +12,26 @@ import org.springframework.stereotype.Service;
 
 import com.financialtracker.backend.DTO.SplitExpense.EachUserPaymentRequest;
 import com.financialtracker.backend.DTO.SplitExpense.EachUserPaymentResponse;
+import com.financialtracker.backend.DTO.SplitExpense.PaymentRecord;
 import com.financialtracker.backend.DTO.SplitExpense.SplitRequest;
 import com.financialtracker.backend.DTO.SplitExpense.SplitResponseBasic;
 import com.financialtracker.backend.DTO.SplitExpense.SplitResponseMain;
 import com.financialtracker.backend.Exceptions.UserDefinedException;
 import com.financialtracker.backend.Models.DL.Services.IExpenseSplitServiceDL;
+import com.financialtracker.backend.Models.POJO.Account;
 import com.financialtracker.backend.Models.POJO.EachUserPayment;
 import com.financialtracker.backend.Models.POJO.ExpenseSplit;
+import com.financialtracker.backend.Models.POJO.Transactions;
 import com.financialtracker.backend.Models.POJO.Users;
+import com.financialtracker.backend.Models.Repositories.AccountRepository;
 import com.financialtracker.backend.Models.Repositories.EachUserPaymentRepository;
 import com.financialtracker.backend.Models.Repositories.ExpenseSplitRepository;
 import com.financialtracker.backend.Models.Repositories.FriendshipsRepository;
+import com.financialtracker.backend.Models.Repositories.TransactionRepository;
 import com.financialtracker.backend.Models.Repositories.UsersRepository;
 import com.financialtracker.backend.enums.EachPaymentStatus;
 import com.financialtracker.backend.enums.SplitStatus;
+import com.financialtracker.backend.enums.TransactionCategory;
 
 import jakarta.transaction.Transactional;
 
@@ -34,9 +42,13 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
     @Autowired 
     ExpenseSplitRepository expenseSplitRepository;
     @Autowired 
+    TransactionRepository transactionRepository;
+    @Autowired 
     UsersRepository usersRepository;
     @Autowired 
     FriendshipsRepository friendshipsRepository;
+    @Autowired 
+    AccountRepository accountRepository;
     
     @Transactional 
     @Override
@@ -48,7 +60,13 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
         if(!checkBalanceEquality(splitRequest.eachUserPayments(), splitRequest.amount())){
             throw new UserDefinedException("Total expense amount does not match the sum of each amounts.");
         }
-        if(splitRequest.eachUserPayments().size()!=splitRequest.numberOfPeople()){
+        long uniqueUsers = splitRequest.eachUserPayments()
+                                        .stream()
+                                        .map(EachUserPaymentRequest::personUsername)
+                                        .map(String::toLowerCase)
+                                        .distinct()
+                                        .count();
+        if(uniqueUsers!=splitRequest.numberOfPeople()){
             throw new UserDefinedException("Number of people in split doesn't match the members.");
         }
         if(splitCreator.getUsername().equalsIgnoreCase(splitRequest.ownerUsername())){
@@ -74,14 +92,14 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
         List<EachUserPayment> eachUserPayments=new ArrayList<>();
         for (EachUserPaymentRequest eachUserInSplitRequest : splitRequest.eachUserPayments()) {
             EachUserPayment eachUserPayment=new EachUserPayment();
-            // if(eachUserInSplitRequest.personUsername().equalsIgnoreCase(splitOwner.getUsername())){
-            //     if(!splitRequest.isTransactionThere()){
-            //         Transactions trans_new=new Transactions();
-            //         trans_new.setAmount(splitRequest.amount());
-            //         trans_new.setCategory(TransactionCategory.SPLIT);
-            //         trans_new.setFromAccountno(null);
-            //     }
-            // }
+            if(eachUserInSplitRequest.personUsername().equalsIgnoreCase(splitOwner.getUsername())){
+                if(!splitRequest.isTransactionThere()){
+                    Transactions trans_new=new Transactions();
+                    trans_new.setAmount(splitRequest.amount());
+                    trans_new.setCategory(TransactionCategory.SPLIT);
+                    trans_new.setFromAccountno(null);
+                }
+            }
             Users shareUser=usersRepository.findByUsernameIgnoreCase(eachUserInSplitRequest.personUsername()).orElseThrow(()->new UserDefinedException("No user found with the username: "+eachUserInSplitRequest.personUsername()));
             eachUserPayment.setUser(shareUser);
             eachUserPayment.setEachShareAmount(eachUserInSplitRequest.eachShareAmount());
@@ -162,7 +180,7 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
             
             
             Boolean isOwner=eachUserPayment.getUser().getEmail().equalsIgnoreCase(expense.getOwner().getEmail());
-            eachUserPaymentResponses.add(new EachUserPaymentResponse(eachUserPayment.getId(), name, eachUserPayment.getEachShareAmount(), isOwner, eachUserPayment.getPaymentStatus()));
+            eachUserPaymentResponses.add(new EachUserPaymentResponse(eachUserPayment.getId(), name, eachUserPayment.getUser().getUsername(), eachUserPayment.getEachShareAmount(), isOwner, eachUserPayment.getPaymentStatus()));
         }
         String paidBy;
         String createdBy;
@@ -179,6 +197,169 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
             createdBy=expense.getCreatedBy().getName();
         }
         return new SplitResponseMain(expense.getId(),expense.getDescription(),expense.getDateOfExpense(),expense.getAmount(),paidBy,createdBy,eachUserPaymentResponses,expense.getCountOfMembers(),expense.getStatus(),expense.getSplitMode(),expense.getCreatedAt());
+    }
+
+    @Transactional 
+    @Override
+    public String confirmPayment(PaymentRecord paymentRecord, String myEmail) {
+        Users me=usersRepository.findByEmail(myEmail).orElseThrow(()->new UserDefinedException("No user exists with email: "+myEmail));
+        Users user=usersRepository.findByUsernameIgnoreCase(paymentRecord.personsUsername()).orElseThrow(()->new UserDefinedException("No person exists with username: "+paymentRecord.personsUsername()));
+
+        ExpenseSplit split=expenseSplitRepository.findById(paymentRecord.splitId()).orElseThrow(()->new UserDefinedException("No split found with the ID"));
+        if(!split.getOwner().getEmail().equalsIgnoreCase(myEmail)){
+            throw new UserDefinedException("You cannot confirm payment since you are not the owner.");
+        }
+        
+        
+        EachUserPayment paymentOfUser=split.getEachUserPayments().stream().filter(e->e.getUser().getUsername().equalsIgnoreCase(user.getUsername())).findFirst().orElse(null);
+        if(paymentOfUser==null){
+            throw new UserDefinedException("There is no person with username:"+paymentRecord.personsUsername()+" in the split.");
+        }
+        if (paymentOfUser.getEachShareAmount().compareTo(paymentRecord.amount()) != 0) {
+            throw new UserDefinedException("Amount doesn't match");
+        }
+        if(paymentOfUser.getPaymentStatus().equals(EachPaymentStatus.AWAITING_CONFIRMATION)){
+            paymentOfUser.setPaymentStatus(EachPaymentStatus.PAID);
+        }
+        else{
+            throw new UserDefinedException("Unable to confirm payment that\'s on status: "+paymentOfUser.getPaymentStatus().name());
+        }
+        if(!paymentRecord.isThereATransaction()){
+            Transactions transaction=new Transactions();
+            Long accountidO = accountRepository
+                                .findByAccountnoLastFourDigitsAndUserEmail(
+                                                Integer.parseInt(paymentRecord.maskedAccountno().substring(paymentRecord.maskedAccountno().length() - 4)), me.getEmail())
+                                .orElseThrow(() -> new UserDefinedException(
+                                                "No account found with accountid " + paymentRecord.maskedAccountno() + " for user "
+                                                                + me.getEmail()));
+            Account account=accountRepository.findById(accountidO).orElseThrow(() -> new UserDefinedException("No account found with number"));
+            account.setBalance(account.getBalance().add(paymentRecord.amount()));
+            transaction.setAmount(paymentRecord.amount());
+            transaction.setCategory(TransactionCategory.SPLIT);
+            transaction.setDescription("[Split Record] "+paymentOfUser.getUser().getName()+" has paid on the split.");
+            transaction.setFromAccountno(account);
+            transaction.setTransactiontime(LocalDate.now());
+            transaction.setType("CREDIT");
+            split.addTransaction(transaction);
+        }
+        return "Payment Confirmed."+paymentRecord.personsUsername()+"\'s share has settled.";
+    }
+
+    @Transactional 
+    @Override
+    public String rejectPayment(PaymentRecord paymentRecord, String myEmail) {
+        Users me=usersRepository.findByEmail(myEmail).orElseThrow(()->new UserDefinedException("No user exists with email: "+myEmail));
+        Users user=usersRepository.findByUsernameIgnoreCase(paymentRecord.personsUsername()).orElseThrow(()->new UserDefinedException("No person exists with username: "+paymentRecord.personsUsername()));
+
+        ExpenseSplit split=expenseSplitRepository.findById(paymentRecord.splitId()).orElseThrow(()->new UserDefinedException("No split found with the ID"));
+        if(!split.getOwner().getEmail().equalsIgnoreCase(me.getEmail())){
+            throw new UserDefinedException("You cannot reject payment since you are not owner");
+        }
+        
+        
+        EachUserPayment paymentOfUser=split.getEachUserPayments().stream().filter(e->e.getUser().getUsername().equalsIgnoreCase(user.getUsername())).findFirst().orElse(null);
+        if(paymentOfUser==null){
+            throw new UserDefinedException("There is no person with username:"+paymentRecord.personsUsername()+" in the split.");
+        }
+        if (paymentOfUser.getEachShareAmount().compareTo(paymentRecord.amount()) != 0) {
+            throw new UserDefinedException("Amount doesn't match");
+        }
+        if(paymentOfUser.getPaymentStatus().equals(EachPaymentStatus.AWAITING_CONFIRMATION)){
+            paymentOfUser.setPaymentStatus(EachPaymentStatus.REJECTED);
+        }
+        else{
+            throw new UserDefinedException("Unable to reject payment that\'s on status: "+paymentOfUser.getPaymentStatus().name());
+        }
+        return "Payment Rejected.";
+    }
+
+    @Transactional 
+    @Override
+    public String MarkAsReceived(PaymentRecord paymentRecord, String myEmail) {
+        Users me=usersRepository.findByEmail(myEmail).orElseThrow(()->new UserDefinedException("No user exists with email: "+myEmail));
+        Users user=usersRepository.findByUsernameIgnoreCase(paymentRecord.personsUsername()).orElseThrow(()->new UserDefinedException("No person exists with username: "+paymentRecord.personsUsername()));
+
+        ExpenseSplit split=expenseSplitRepository.findById(paymentRecord.splitId()).orElseThrow(()->new UserDefinedException("No split found with the ID"));
+        if(!split.getOwner().getEmail().equalsIgnoreCase(me.getEmail())){
+            throw new UserDefinedException("You cannot mark as received.");
+        }
+        
+        
+        EachUserPayment paymentOfUser=split.getEachUserPayments().stream().filter(e->e.getUser().getUsername().equalsIgnoreCase(user.getUsername())).findFirst().orElse(null);
+        if(paymentOfUser==null){
+            throw new UserDefinedException("There is no person with username:"+paymentRecord.personsUsername()+" in the split.");
+        }
+        if (paymentOfUser.getEachShareAmount().compareTo(paymentRecord.amount()) != 0) {
+            throw new UserDefinedException("Amount doesn't match");
+        }
+        if(paymentOfUser.getPaymentStatus().equals(EachPaymentStatus.PENDING)){
+            paymentOfUser.setPaymentStatus(EachPaymentStatus.PAID);
+        }
+        else{
+            throw new UserDefinedException("Unable to reject payment that\'s on status: "+paymentOfUser.getPaymentStatus().name());
+        }
+        if(!paymentRecord.isThereATransaction()){
+            Transactions transaction=new Transactions();
+            Long accountidO = accountRepository
+                                .findByAccountnoLastFourDigitsAndUserEmail(
+                                                Integer.parseInt(paymentRecord.maskedAccountno().substring(paymentRecord.maskedAccountno().length() - 4)), me.getEmail())
+                                .orElseThrow(() -> new UserDefinedException(
+                                                "No account found with accountid " + paymentRecord.maskedAccountno() + " for user "
+                                                                + me.getEmail()));
+            Account account=accountRepository.findById(accountidO).orElseThrow(() -> new UserDefinedException("No account found with number"));
+            account.setBalance(account.getBalance().add(paymentRecord.amount()));
+            transaction.setAmount(paymentRecord.amount());
+            transaction.setCategory(TransactionCategory.SPLIT);
+            transaction.setDescription("[Split Record] "+paymentOfUser.getUser().getName()+" has paid on the split.");
+            transaction.setFromAccountno(account);
+            transaction.setTransactiontime(LocalDate.now());
+            transaction.setType("CREDIT");
+            split.addTransaction(transaction);
+        }
+        return "Marked as Received.";
+    }
+
+    @Transactional 
+    @Override
+    public String MarkAsPaid(PaymentRecord paymentRecord, String myEmail) {
+        Users me=usersRepository.findByEmail(myEmail).orElseThrow(()->new UserDefinedException("No user exists with email: "+myEmail));
+        Users user=usersRepository.findByUsernameIgnoreCase(paymentRecord.personsUsername()).orElseThrow(()->new UserDefinedException("No person exists with username: "+paymentRecord.personsUsername()));
+
+        ExpenseSplit split=expenseSplitRepository.findById(paymentRecord.splitId()).orElseThrow(()->new UserDefinedException("No split found with the ID"));
+        if(split.getOwner().getEmail().equalsIgnoreCase(me.getEmail())){
+            throw new UserDefinedException("You cannot pay since you are the owner.");
+        }
+        EachUserPayment paymentOfUser=split.getEachUserPayments().stream().filter(e->e.getUser().getUsername().equalsIgnoreCase(user.getUsername())).findFirst().orElse(null);
+        if(paymentOfUser==null){
+            throw new UserDefinedException("There is no person with username:"+paymentRecord.personsUsername()+" in the split.");
+        }
+        if (paymentOfUser.getEachShareAmount().compareTo(paymentRecord.amount()) != 0) {
+            throw new UserDefinedException("Amount doesn't match");
+        }
+        if(paymentOfUser.getPaymentStatus().equals(EachPaymentStatus.PENDING)||paymentOfUser.getPaymentStatus().equals(EachPaymentStatus.REJECTED)){
+            paymentOfUser.setPaymentStatus(EachPaymentStatus.AWAITING_CONFIRMATION);
+        }
+        
+        if(!paymentRecord.isThereATransaction()){
+            Transactions transaction=new Transactions();
+            Long accountidO = accountRepository
+                                .findByAccountnoLastFourDigitsAndUserEmail(
+                                                Integer.parseInt(paymentRecord.maskedAccountno().substring(paymentRecord.maskedAccountno().length() - 4)), me.getEmail())
+                                .orElseThrow(() -> new UserDefinedException(
+                                                "No account found with accountid " + paymentRecord.maskedAccountno() + " for user "
+                                                                + me.getEmail()));
+            Account account=accountRepository.findById(accountidO).orElseThrow(() -> new UserDefinedException("No account found with number"));
+            account.setBalance(account.getBalance().subtract(paymentRecord.amount()));
+            transaction.setAmount(paymentRecord.amount());
+            transaction.setCategory(TransactionCategory.SPLIT);
+            transaction.setDescription("[Split Record] "+"Paid on the split.");
+            transaction.setFromAccountno(account);
+            transaction.setTransactiontime(LocalDate.now());
+            transaction.setType("DEBIT");
+            paymentOfUser.setTransaction(transaction);
+            transactionRepository.save(transaction);
+        }
+        return "Paid successfully.";
     }
 
 }

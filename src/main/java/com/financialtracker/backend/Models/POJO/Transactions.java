@@ -40,6 +40,9 @@ public class Transactions {
 	@ManyToOne
 	@JoinColumn(name = "toAccountno")
 	private Account toAccountno;
+	@ManyToOne 
+	@JoinColumn (name="expenseSplitId")
+	private ExpenseSplit expenseSplit;
 	@Column(precision = 15, scale = 2)
 	private BigDecimal amount;
 	private LocalDate transactiontime;

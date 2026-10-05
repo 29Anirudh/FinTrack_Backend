@@ -51,6 +51,23 @@ public class ExpenseSplit {
     )
     private List<EachUserPayment> eachUserPayments = new ArrayList<>();
 
+    @OneToMany(
+        mappedBy = "expenseSplit",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private List<Transactions> transactionsOfSplit=new ArrayList<>();
+
+    public void addTransaction(Transactions transaction) {
+        transactionsOfSplit.add(transaction);
+        transaction.setExpenseSplit(this);
+    }
+
+    public void removeTransaction(Transactions transaction) {
+        transactionsOfSplit.remove(transaction);
+        transaction.setExpenseSplit(null);
+    }
+
     @Enumerated(EnumType.STRING)
     private SplitMode splitMode;
 
