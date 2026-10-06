@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.financialtracker.backend.DTO.SplitExpense.PaymentRecord;
 import com.financialtracker.backend.DTO.SplitExpense.SplitRequest;
 import com.financialtracker.backend.Models.BL.ExpenseSplitBL;
 
@@ -35,8 +36,16 @@ public class ExpenseSplitController {
         return new ResponseEntity<>(response,HttpStatus.CREATED);
     }
 
-    @GetMapping("/")
+    @GetMapping("/dashboard")
     public ResponseEntity<?> getAllExpenses(){
+        Map<String,Object> response=new HashMap<>();
+        response.put("statistics", expenseSplitBL.getBasicStatsOfSplits(getEmail()));
+        response.put("expenses", expenseSplitBL.getBasicSplits(getEmail()));
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<?> getDashboard(){
         Map<String,Object> response=new HashMap<>();
         response.put("list", expenseSplitBL.getBasicSplits(getEmail()));
         return new ResponseEntity<>(response,HttpStatus.OK);
@@ -46,6 +55,36 @@ public class ExpenseSplitController {
     public ResponseEntity<?> getExpenseDetails(@PathVariable("expenseId") UUID expenseId){
         Map<String,Object> response=new HashMap<>();
         response.put("details", expenseSplitBL.getExpenseInfo(getEmail(), expenseId));
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    //On the owner side
+    @PostMapping("/confirmpayment")
+    public ResponseEntity<?> confirmPaymentInASplit(@RequestBody PaymentRecord paymentRecord){
+        Map<String,Object> response=new HashMap<>();
+        response.put("msg", expenseSplitBL.confirmPayment(paymentRecord, getEmail()));
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    @PostMapping("/rejectpayment")
+    public ResponseEntity<?> rejectPaymentInASplit(@RequestBody PaymentRecord paymentRecord){
+        Map<String,Object> response=new HashMap<>();
+        response.put("msg", expenseSplitBL.rejectPayment(paymentRecord, getEmail()));
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    @PostMapping("/markasreceived")
+    public ResponseEntity<?> markAsReceivedInASplit(@RequestBody PaymentRecord paymentRecord){
+        Map<String,Object> response=new HashMap<>();
+        response.put("msg", expenseSplitBL.markAsReceived(paymentRecord, getEmail()));
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    //On the split payer side
+    @PostMapping("/markaspaid")
+    public ResponseEntity<?> markAsPaidInASplit(@RequestBody PaymentRecord paymentRecord){
+        Map<String,Object> response=new HashMap<>();
+        response.put("msg", expenseSplitBL.markAsPaid(paymentRecord, getEmail()));
         return new ResponseEntity<>(response,HttpStatus.OK);
     }
 }

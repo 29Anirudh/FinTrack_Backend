@@ -3,13 +3,15 @@ package com.financialtracker.backend.Models.DL.ServicesImpl;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.financialtracker.backend.DTO.SplitExpense.BasicStatsOfSplits;
 import com.financialtracker.backend.DTO.SplitExpense.EachUserPaymentRequest;
 import com.financialtracker.backend.DTO.SplitExpense.EachUserPaymentResponse;
 import com.financialtracker.backend.DTO.SplitExpense.PaymentRecord;
@@ -92,19 +94,37 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
         List<EachUserPayment> eachUserPayments=new ArrayList<>();
         for (EachUserPaymentRequest eachUserInSplitRequest : splitRequest.eachUserPayments()) {
             EachUserPayment eachUserPayment=new EachUserPayment();
-            if(eachUserInSplitRequest.personUsername().equalsIgnoreCase(splitOwner.getUsername())){
+            if(eachUserInSplitRequest.personUsername().equalsIgnoreCase(splitOwner.getUsername())){ //if_owner
+                Long accountidO = accountRepository
+                                    .findByAccountnoLastFourDigitsAndUserEmail(
+                                                    Integer.parseInt(splitRequest.maskedAccountNoForTransaction().substring(splitRequest.maskedAccountNoForTransaction().length() - 4)), splitOwner.getEmail())
+                                    .orElseThrow(() -> new UserDefinedException(
+                                                    "No account found with accountid " + splitRequest.maskedAccountNoForTransaction() + " for user "
+                                                                    + splitOwner.getEmail()));
+                Account account=accountRepository.findById(accountidO).orElseThrow(() -> new UserDefinedException("No account found with number"));
                 if(!splitRequest.isTransactionThere()){
+                    account.setBalance(account.getBalance().subtract(splitRequest.amount()));
                     Transactions trans_new=new Transactions();
                     trans_new.setAmount(splitRequest.amount());
                     trans_new.setCategory(TransactionCategory.SPLIT);
-                    trans_new.setFromAccountno(null);
+                    trans_new.setFromAccountno(account);
+                    trans_new.setDescription("[SPLIT] Owner Payment.");
+                    trans_new.setTransactiontime(LocalDate.now());
+                    trans_new.setType("DEBIT");
+                    newSplit.addTransaction(trans_new);
                 }
             }
             Users shareUser=usersRepository.findByUsernameIgnoreCase(eachUserInSplitRequest.personUsername()).orElseThrow(()->new UserDefinedException("No user found with the username: "+eachUserInSplitRequest.personUsername()));
+            if(shareUser.getUsername().equalsIgnoreCase(splitOwner.getUsername())){ //if_owner
+                eachUserPayment.setPaymentStatus(EachPaymentStatus.PAID);//SINCE he is the owner of the split.
+                //Something should be done such that money movement on the owner's account should be told clearly.
+            }
+            else{
+                eachUserPayment.setPaymentStatus(EachPaymentStatus.PENDING);
+            }
             eachUserPayment.setUser(shareUser);
             eachUserPayment.setEachShareAmount(eachUserInSplitRequest.eachShareAmount());
             eachUserPayment.setExpenseSplit(newSplit);
-            eachUserPayment.setPaymentStatus(EachPaymentStatus.PENDING);
             eachUserPayment.setTransaction(null);
 
             eachUserPayments.add(eachUserPayment);
@@ -148,14 +168,16 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
 
         for (ExpenseSplit expense : expenses) {
             BigDecimal myShare=expense.getEachUserPayments().stream().filter(payment ->payment.getUser().getEmail().equalsIgnoreCase(myEmail)).map(EachUserPayment::getEachShareAmount).findFirst().orElse(BigDecimal.ZERO);
+            String oneUnpaidUsername=expense.getEachUserPayments().stream().filter(payment->!payment.getPaymentStatus().equals(EachPaymentStatus.PAID)).map(EachUserPayment::getUser).map(Users::getUsername).findFirst().orElse(null);
             String paidBy;
+            Long numberOfPeopleSettled=expense.getEachUserPayments().stream().filter(payment->payment.getPaymentStatus().equals(EachPaymentStatus.PAID)).distinct().count();
             if(expense.getOwner().getEmail().equalsIgnoreCase(myEmail)){
                 paidBy="You";
             }
             else{
                 paidBy=expense.getOwner().getName();
             }
-            basicExpenseSplits.add(new SplitResponseBasic(expense.getId(),expense.getDescription(),expense.getDateOfExpense(),expense.getAmount(),myShare,paidBy,expense.getCountOfMembers(),expense.getStatus(),expense.getCreatedAt()));
+            basicExpenseSplits.add(new SplitResponseBasic(expense.getId(),expense.getDescription(),expense.getDateOfExpense(),expense.getAmount(),myShare,paidBy,expense.getCountOfMembers(),expense.getStatus(),oneUnpaidUsername,numberOfPeopleSettled.intValue(),expense.getCreatedAt()));
         }
         return basicExpenseSplits;
     }
@@ -242,6 +264,9 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
             transaction.setType("CREDIT");
             split.addTransaction(transaction);
         }
+        if(validateSplitStatus(paymentRecord, split)){
+            split.setStatus(SplitStatus.SETTLED);
+        }
         return "Payment Confirmed."+paymentRecord.personsUsername()+"\'s share has settled.";
     }
 
@@ -316,6 +341,9 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
             transaction.setType("CREDIT");
             split.addTransaction(transaction);
         }
+        if(validateSplitStatus(paymentRecord, split)){
+            split.setStatus(SplitStatus.SETTLED);
+        }
         return "Marked as Received.";
     }
 
@@ -361,5 +389,48 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
         }
         return "Paid successfully.";
     }
+
+    @Override
+    public BasicStatsOfSplits getBasicStatsOfSplits(String myEmail) {
+        List<ExpenseSplit> splits=expenseSplitRepository.getAllRelatedExpenses(myEmail);
+        Map<String,BigDecimal> stats=new HashMap<>();
+        for(ExpenseSplit eachSplit:splits){
+            if(eachSplit.getStatus().equals(SplitStatus.SETTLED)){//if the split is already settled, no adding of amount to the map.
+                continue;
+            }
+            if(eachSplit.getOwner().getEmail().equalsIgnoreCase(myEmail)){//I am the owner so I am the one getting the amount
+                for(EachUserPayment eachUserPayment:eachSplit.getEachUserPayments()){
+                    if(eachUserPayment.getPaymentStatus().equals(EachPaymentStatus.PAID)){
+                        continue;
+                    }
+                    stats.put("CREDIT", stats.getOrDefault("CREDIT", BigDecimal.ZERO).add(eachUserPayment.getEachShareAmount()));
+                }
+            }
+            else{ // I am not the owner, so these amounts go out from my hand.
+                for(EachUserPayment eachUserPayment:eachSplit.getEachUserPayments()){
+                    if(eachUserPayment.getPaymentStatus().equals(EachPaymentStatus.PAID)){
+                        continue;
+                    }
+                    stats.put("DEBIT", stats.getOrDefault("DEBIT", BigDecimal.ZERO).add(eachUserPayment.getEachShareAmount()));
+                }
+            }
+        }
+        return new BasicStatsOfSplits(stats.getOrDefault("CREDIT", BigDecimal.ZERO), stats.getOrDefault("DEBIT", BigDecimal.ZERO));
+    } 
+
+    //Helper Functions
+    public boolean validateSplitStatus(PaymentRecord paymentRecord,ExpenseSplit split){
+        for (EachUserPayment eachUserPayment : split.getEachUserPayments()) {
+            if(eachUserPayment.getUser().getUsername().equalsIgnoreCase(paymentRecord.personsUsername())){
+                continue;
+            }
+            if(!eachUserPayment.getPaymentStatus().equals(EachPaymentStatus.PAID)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    
 
 }

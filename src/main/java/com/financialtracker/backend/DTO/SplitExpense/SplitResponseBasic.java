@@ -7,6 +7,6 @@ import java.util.UUID;
 
 import com.financialtracker.backend.enums.SplitStatus;
 
-public record SplitResponseBasic(UUID spltiId,String purpose,LocalDate dateOfExpense,BigDecimal amount,BigDecimal myShare,String paidByName,Integer numberOfPeople,SplitStatus splitStatus,LocalDateTime createdAt) {
+public record SplitResponseBasic(UUID spltiId,String purpose,LocalDate dateOfExpense,BigDecimal amount,BigDecimal myShare,String paidByName,Integer numberOfPeople,SplitStatus splitStatus,String oneUsernameNotPaid,Integer numberOfPeopleSettled,LocalDateTime createdAt) {
 
 }

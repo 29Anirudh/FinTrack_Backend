@@ -119,7 +119,7 @@ public class UsersSeviceDL implements IUsersServiceDL {
 		List<Users> usersList=usersrepository.findByUsernameContainsIgnoreCaseOrNameContainingIgnoreCase(searchKey,searchKey);
 		Users me=usersrepository.findByEmail(username).orElseThrow(()->new UserDefinedException("No user exists with email: "+username));
 		usersList.remove(me);
-		usersList.removeIf(user->user.getUsername()==null || user.getUsername().length()==0);
+		usersList.removeIf(user->user.getUsername()==null || user.getUsername().length()==0  || user.getAccounts().isEmpty());
 
 		List<UsersDetailsForRequests> userDetails=new ArrayList<>();
 		for (Users user : usersList) {
