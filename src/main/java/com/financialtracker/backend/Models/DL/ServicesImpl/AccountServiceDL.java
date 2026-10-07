@@ -38,7 +38,8 @@ public class AccountServiceDL implements IAccountServiceDL {
 
 	@Override
 	public String createAccount(AccountDTO acc, String username) {
-		Optional<Account> accold = accountrepository.findByAccountnoAndUserEmail(acc.getAccountno(), username);
+
+		Optional<Account> accold = accountrepository.findById(acc.getAccountno());
 		if (accold.isEmpty()) {
 			Users user = usersrepository.findByEmail(username)
 					.orElseThrow(() -> new UserDefinedException("No user  found with email `" + username + "`"));

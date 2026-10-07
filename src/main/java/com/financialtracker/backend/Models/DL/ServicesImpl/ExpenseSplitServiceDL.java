@@ -351,10 +351,13 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
     @Override
     public String MarkAsPaid(PaymentRecord paymentRecord, String myEmail) {
         Users me=usersRepository.findByEmail(myEmail).orElseThrow(()->new UserDefinedException("No user exists with email: "+myEmail));
+        //Who pays the bill to the owner is the "user" here
         Users user=usersRepository.findByUsernameIgnoreCase(paymentRecord.personsUsername()).orElseThrow(()->new UserDefinedException("No person exists with username: "+paymentRecord.personsUsername()));
-
+        if(!myEmail.equalsIgnoreCase(user.getEmail())){
+            throw new UserDefinedException("You cannot pay someone's payment");
+        }
         ExpenseSplit split=expenseSplitRepository.findById(paymentRecord.splitId()).orElseThrow(()->new UserDefinedException("No split found with the ID"));
-        if(split.getOwner().getEmail().equalsIgnoreCase(me.getEmail())){
+        if(split.getOwner().getEmail().equalsIgnoreCase(user.getEmail())){
             throw new UserDefinedException("You cannot pay since you are the owner.");
         }
         EachUserPayment paymentOfUser=split.getEachUserPayments().stream().filter(e->e.getUser().getUsername().equalsIgnoreCase(user.getUsername())).findFirst().orElse(null);
@@ -366,6 +369,9 @@ public class ExpenseSplitServiceDL implements IExpenseSplitServiceDL{
         }
         if(paymentOfUser.getPaymentStatus().equals(EachPaymentStatus.PENDING)||paymentOfUser.getPaymentStatus().equals(EachPaymentStatus.REJECTED)){
             paymentOfUser.setPaymentStatus(EachPaymentStatus.AWAITING_CONFIRMATION);
+        }
+        else{
+            throw new UserDefinedException("Cannot mark as paid for expense on "+paymentOfUser.getPaymentStatus()+" status");
         }
         
         if(!paymentRecord.isThereATransaction()){
